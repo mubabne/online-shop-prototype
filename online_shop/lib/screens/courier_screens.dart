@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../app_state.dart';
 import '../models.dart';
+import '../theme.dart';
+import '../widgets/animations.dart';
 import '../widgets/common.dart';
 
 /// Хүргэлт актор: Хүргэлт хүлээн авах, хуваарилах, төлөв шинэчлэх,
@@ -97,46 +99,108 @@ class AvailableDeliveriesTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final app = AppScope.of(context);
     final orders = app.availableDeliveries;
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Сайн байна уу, ${app.currentUser!.name}'),
-        actions: const [LogoutButton()],
-      ),
-      body: orders.isEmpty
-          ? const EmptyState(
+    final mine = app.deliveriesOf(app.currentUser!.id);
+    return ListView(
+      padding: EdgeInsets.zero,
+      children: [
+        GradientHeader(
+          subtitle: 'Сайн байна уу,',
+          title: app.currentUser!.name,
+          colors: AppColors.role(UserRole.courier),
+          icon: Icons.delivery_dining_rounded,
+          trailing: const LogoutButton(color: Colors.white),
+          bottom: Row(children: [
+            _CourierStat(label: 'Шинэ', value: orders.length),
+            _CourierStat(
+                label: 'Идэвхтэй',
+                value: mine
+                    .where((o) => o.status != OrderStatus.delivered)
+                    .length),
+            _CourierStat(
+                label: 'Хүргэсэн',
+                value: mine
+                    .where((o) => o.status == OrderStatus.delivered)
+                    .length),
+          ]),
+        ),
+        if (orders.isEmpty)
+          const EmptyState(
               icon: Icons.inbox_outlined,
               text: 'Хүргэлтэд бэлэн захиалга алга.\n'
                   'Дэлгүүр захиалгыг "Хүргэлтэд шилжүүлэх" үед энд гарна.')
-          : ListView(
-              padding: const EdgeInsets.all(12),
+        else
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
               children: [
-                for (final o in orders)
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          _OrderSummary(o),
-                          const SizedBox(height: 8),
-                          FilledButton.icon(
-                            onPressed: () {
-                              app.acceptDelivery(o);
-                              toast(context, '${o.id} хүргэлтийг хүлээн авлаа');
-                            },
-                            icon: const Icon(Icons.check),
-                            label: const Text('Хүргэлт хүлээн авах'),
-                          ),
-                        ],
+                for (final (i, o) in orders.indexed)
+                  FadeSlideIn(
+                    key: ValueKey(o.id),
+                    index: i,
+                    child: Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(14),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _OrderSummary(o),
+                            const SizedBox(height: 10),
+                            FilledButton.icon(
+                              onPressed: () {
+                                app.acceptDelivery(o);
+                                toast(context,
+                                    '${o.id} хүргэлтийг хүлээн авлаа',
+                                    icon: Icons.delivery_dining_rounded);
+                              },
+                              icon: const Icon(Icons.check_rounded),
+                              label: const Text('Хүргэлт хүлээн авах'),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
               ],
             ),
+          ),
+      ],
     );
   }
 }
 
+class _CourierStat extends StatelessWidget {
+  const _CourierStat({required this.label, required this.value});
+
+  final String label;
+  final int value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        margin: const EdgeInsets.only(right: 8),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.18),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            CountUpText(
+                value: value,
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900)),
+            Text(label,
+                style: TextStyle(color: Colors.white.withValues(alpha: 0.9))),
+          ],
+        ),
+      ),
+    );
+  }
+}
 // ======================= Хуваарилах, төлөв шинэчлэх, баталгаажуулах =======================
 
 class MyDeliveriesTab extends StatelessWidget {
@@ -172,17 +236,21 @@ class MyDeliveriesTab extends StatelessWidget {
                     child: Text('Идэвхтэй',
                         style: TextStyle(fontWeight: FontWeight.bold)),
                   ),
-                for (final o in active)
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          _OrderSummary(o),
-                          const SizedBox(height: 8),
-                          ..._actions(context, app, o),
-                        ],
+                for (final (i, o) in active.indexed)
+                  FadeSlideIn(
+                    key: ValueKey('${o.id}-${o.status}'),
+                    index: i,
+                    child: Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(14),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _OrderSummary(o),
+                            const SizedBox(height: 10),
+                            ..._actions(context, app, o),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -195,8 +263,8 @@ class MyDeliveriesTab extends StatelessWidget {
                 for (final o in done)
                   Card(
                     child: ListTile(
-                      leading:
-                          const Icon(Icons.check_circle, color: Colors.green),
+                      leading: const Icon(Icons.verified_rounded,
+                          color: Color(0xFF2ECC71)),
                       title: Text(o.id),
                       subtitle: Text(
                           '${o.address}\nХүлээн авсан: ${o.receivedBy ?? '-'}'),
@@ -286,8 +354,7 @@ class MyDeliveriesTab extends StatelessWidget {
             TextField(
               controller: ctrl,
               decoration: const InputDecoration(
-                  labelText: 'Хүлээн авсан хүний нэр',
-                  border: OutlineInputBorder()),
+                  labelText: 'Хүлээн авсан хүний нэр'),
             ),
           ],
         ),

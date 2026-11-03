@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../app_state.dart';
 import '../models.dart';
+import '../theme.dart';
+import '../widgets/animations.dart';
 import '../widgets/common.dart';
+import 'buyer_screens.dart' show OrderCard;
 
 /// Дэлгүүр /Merch актор: дэлгүүр, бараа, үнэ, захиалга, тайлан, чат.
 class MerchantHome extends StatefulWidget {
@@ -117,18 +120,18 @@ class _StoreFormScreenState extends State<StoreFormScreen> {
           TextField(
               controller: _name,
               decoration: const InputDecoration(
-                  labelText: 'Дэлгүүрийн нэр', border: OutlineInputBorder())),
+                  labelText: 'Дэлгүүрийн нэр')),
           const SizedBox(height: 12),
           TextField(
               controller: _cat,
               decoration: const InputDecoration(
-                  labelText: 'Ангилал', border: OutlineInputBorder())),
+                  labelText: 'Ангилал')),
           const SizedBox(height: 12),
           TextField(
               controller: _desc,
               maxLines: 3,
               decoration: const InputDecoration(
-                  labelText: 'Тайлбар', border: OutlineInputBorder())),
+                  labelText: 'Тайлбар')),
           const SizedBox(height: 20),
           FilledButton(onPressed: _save, child: const Text('Хадгалах')),
         ],
@@ -151,63 +154,75 @@ class StoreInfoTab extends StatelessWidget {
             o.status != OrderStatus.delivered &&
             o.status != OrderStatus.cancelled)
         .length;
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(store.name),
-        actions: const [LogoutButton()],
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Card(
-            color: store.verified ? Colors.green.shade50 : Colors.orange.shade50,
-            child: ListTile(
-              leading: Icon(
-                  store.verified ? Icons.verified : Icons.hourglass_top,
-                  color: store.verified ? Colors.green : Colors.orange),
-              title: Text(store.verified
-                  ? 'Баталгаажсан дэлгүүр'
-                  : 'Админы баталгаажуулалт хүлээж байна'),
-              subtitle: Text(store.verified
-                  ? 'Таны бараа хэрэглэгчдэд харагдаж байна.'
-                  : 'Баталгаажих хүртэл бараа хайлтад гарахгүй.'),
-            ),
+    final statusColor = store.verified ? Colors.green : Colors.orange;
+    return ListView(
+      padding: EdgeInsets.zero,
+      children: [
+        GradientHeader(
+          subtitle: 'Миний дэлгүүр',
+          title: store.name,
+          colors: AppColors.role(UserRole.merchant),
+          icon: Icons.storefront_rounded,
+          trailing: const LogoutButton(color: Colors.white),
+          bottom: Text(
+            '${store.category} · ${store.description}',
+            style: TextStyle(color: Colors.white.withValues(alpha: 0.9)),
           ),
-          const SizedBox(height: 8),
-          ListTile(
-            title: const Text('Ангилал'),
-            subtitle: Text(store.category),
-          ),
-          ListTile(
-            title: const Text('Тайлбар'),
-            subtitle: Text(store.description),
-          ),
-          const SizedBox(height: 8),
-          GridView.count(
-            crossAxisCount: 2,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            childAspectRatio: 1.6,
+        ),
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              StatTile(
-                  label: 'Бараа',
-                  value: '${app.productsOfStore(store.id, onlyVisible: false).length}',
-                  icon: Icons.inventory_2_outlined),
-              StatTile(
-                  label: 'Идэвхтэй захиалга',
-                  value: '$active',
-                  icon: Icons.pending_actions),
+              FadeSlideIn(
+                child: Card(
+                  color: statusColor.withValues(alpha: 0.12),
+                  child: ListTile(
+                    leading: Icon(
+                        store.verified
+                            ? Icons.verified_rounded
+                            : Icons.hourglass_top_rounded,
+                        color: statusColor),
+                    title: Text(
+                        store.verified
+                            ? 'Баталгаажсан дэлгүүр'
+                            : 'Админы баталгаажуулалт хүлээж байна',
+                        style: const TextStyle(fontWeight: FontWeight.w700)),
+                    subtitle: Text(store.verified
+                        ? 'Таны бараа хэрэглэгчдэд харагдаж байна.'
+                        : 'Баталгаажих хүртэл бараа хайлтад гарахгүй.'),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              StatGrid(children: [
+                StatTile(
+                    label: 'Бараа',
+                    value:
+                        app.productsOfStore(store.id, onlyVisible: false).length,
+                    icon: Icons.inventory_2_rounded,
+                    colors: AppColors.role(UserRole.merchant)),
+                StatTile(
+                    label: 'Идэвхтэй захиалга',
+                    value: active,
+                    icon: Icons.pending_actions_rounded,
+                    colors: AppColors.role(UserRole.buyer)),
+              ]),
+              const SizedBox(height: 12),
+              FadeSlideIn(
+                index: 3,
+                child: OutlinedButton.icon(
+                  onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                          builder: (_) => StoreFormScreen(store: store))),
+                  icon: const Icon(Icons.edit_rounded),
+                  label: const Text('Дэлгүүрийн мэдээлэл засах'),
+                ),
+              ),
             ],
           ),
-          const SizedBox(height: 12),
-          OutlinedButton.icon(
-            onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => StoreFormScreen(store: store))),
-            icon: const Icon(Icons.edit),
-            label: const Text('Дэлгүүрийн мэдээлэл засах'),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -237,11 +252,14 @@ class MerchantProductsTab extends StatelessWidget {
           : ListView(
               padding: const EdgeInsets.fromLTRB(12, 12, 12, 88),
               children: [
-                for (final p in items)
-                  Card(
+                for (final (i, p) in items.indexed)
+                  FadeSlideIn(
+                   index: i,
+                   child: Card(
                     child: ListTile(
-                      leading: ProductThumb(p, size: 44),
-                      title: Text(p.name),
+                      leading: ProductThumb(p, size: 48),
+                      title: Text(p.name,
+                          style: const TextStyle(fontWeight: FontWeight.w700)),
                       subtitle: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -274,7 +292,7 @@ class MerchantProductsTab extends StatelessWidget {
                         ],
                       ),
                     ),
-                  ),
+                  )),
               ],
             ),
     );
@@ -318,7 +336,7 @@ class MerchantProductsTab extends StatelessWidget {
                 controller: price,
                 keyboardType: TextInputType.number,
                 decoration: const InputDecoration(
-                    labelText: 'Үндсэн үнэ (төг)', border: OutlineInputBorder()),
+                    labelText: 'Үндсэн үнэ (төг)'),
               ),
               const SizedBox(height: 16),
               Text('Хямдрал: ${discount.round()}%'),
@@ -409,7 +427,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     String? number(String? v) =>
         int.tryParse(v?.trim() ?? '') == null ? 'Тоо оруулна уу' : null;
     InputDecoration deco(String l) =>
-        InputDecoration(labelText: l, border: const OutlineInputBorder());
+        InputDecoration(labelText: l);
     return Scaffold(
       appBar: AppBar(
           title: Text(widget.product == null ? 'Бараа нэмэх' : 'Бараа засах')),
@@ -478,65 +496,63 @@ class MerchantOrdersTab extends StatelessWidget {
           : ListView(
               padding: const EdgeInsets.all(12),
               children: [
-                for (final o in orders)
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(children: [
-                            Expanded(
-                              child: Text(o.id,
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.bold)),
+                for (final (i, o) in orders.indexed)
+                  FadeSlideIn(
+                    index: i,
+                    child: OrderCard(
+                      order: o,
+                      footer: Padding(
+                        padding: const EdgeInsets.only(top: 10),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                                '${app.userById(o.buyerId)?.name ?? ''}: ${o.lines.map((l) => '${l.productName} × ${l.quantity}').join(', ')}',
+                                style: TextStyle(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant)),
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 4,
+                              children: [
+                                if (o.status == OrderStatus.paid)
+                                  FilledButton.icon(
+                                    onPressed: () => app.setOrderStatus(
+                                        o, OrderStatus.processing),
+                                    icon: const Icon(Icons.inventory_rounded),
+                                    label: const Text('Хүлээн авч бэлтгэх'),
+                                  ),
+                                if (o.status == OrderStatus.processing)
+                                  FilledButton.icon(
+                                    onPressed: () => app.setOrderStatus(
+                                        o, OrderStatus.readyForDelivery),
+                                    icon: const Icon(Icons.outbox_rounded),
+                                    label: const Text('Хүргэлтэд шилжүүлэх'),
+                                  ),
+                                if (o.status == OrderStatus.paid ||
+                                    o.status == OrderStatus.processing)
+                                  TextButton(
+                                    onPressed: () => app.setOrderStatus(
+                                        o, OrderStatus.cancelled),
+                                    child: const Text('Цуцлах'),
+                                  ),
+                                TextButton.icon(
+                                  onPressed: () => Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                          builder: (_) => ChatScreen(
+                                              buyerId: o.buyerId,
+                                              storeId: store.id,
+                                              asBuyer: false))),
+                                  icon: const Icon(
+                                      Icons.chat_bubble_outline_rounded),
+                                  label: const Text('Холбогдох'),
+                                ),
+                              ],
                             ),
-                            StatusChip(o.status),
-                          ]),
-                          const SizedBox(height: 4),
-                          Text(
-                              '${app.userById(o.buyerId)?.name ?? ''} · ${shortDate(o.createdAt)}'),
-                          for (final l in o.lines)
-                            Text('• ${l.productName} × ${l.quantity}'),
-                          Text('Нийт: ${money(o.total)}',
-                              style:
-                                  const TextStyle(fontWeight: FontWeight.w600)),
-                          const SizedBox(height: 8),
-                          Wrap(
-                            spacing: 8,
-                            children: [
-                              if (o.status == OrderStatus.paid)
-                                FilledButton(
-                                  onPressed: () => app.setOrderStatus(
-                                      o, OrderStatus.processing),
-                                  child: const Text('Хүлээн авч бэлтгэх'),
-                                ),
-                              if (o.status == OrderStatus.processing)
-                                FilledButton(
-                                  onPressed: () => app.setOrderStatus(
-                                      o, OrderStatus.readyForDelivery),
-                                  child: const Text('Хүргэлтэд шилжүүлэх'),
-                                ),
-                              if (o.status == OrderStatus.paid ||
-                                  o.status == OrderStatus.processing)
-                                TextButton(
-                                  onPressed: () => app.setOrderStatus(
-                                      o, OrderStatus.cancelled),
-                                  child: const Text('Цуцлах'),
-                                ),
-                              TextButton.icon(
-                                onPressed: () => Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                        builder: (_) => ChatScreen(
-                                            buyerId: o.buyerId,
-                                            storeId: store.id,
-                                            asBuyer: false))),
-                                icon: const Icon(Icons.chat_outlined),
-                                label: const Text('Холбогдох'),
-                              ),
-                            ],
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -573,45 +589,38 @@ class SalesReportTab extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(12),
         children: [
-          GridView.count(
-            crossAxisCount: 2,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            childAspectRatio: 1.5,
-            children: [
-              StatTile(
-                  label: 'Нийт борлуулалт',
-                  value: money(revenue),
-                  icon: Icons.payments_outlined),
-              StatTile(
-                  label: 'Захиалга',
-                  value: '${orders.length}',
-                  icon: Icons.receipt_long),
-              StatTile(
-                  label: 'Хүргэгдсэн',
-                  value: '$delivered',
-                  icon: Icons.local_shipping),
-              StatTile(
-                  label: 'Дундаж үнэлгээ',
-                  value: avg.toStringAsFixed(1),
-                  icon: Icons.star_outline),
-            ],
-          ),
+          StatGrid(children: [
+            StatTile(
+                label: 'Нийт борлуулалт',
+                value: revenue,
+                format: money,
+                icon: Icons.payments_rounded,
+                colors: AppColors.role(UserRole.merchant)),
+            StatTile(
+                label: 'Захиалга',
+                value: orders.length,
+                icon: Icons.receipt_long_rounded,
+                colors: AppColors.role(UserRole.buyer)),
+            StatTile(
+                label: 'Хүргэгдсэн',
+                value: delivered,
+                icon: Icons.local_shipping_rounded,
+                colors: AppColors.role(UserRole.courier)),
+            StatTile(
+                label: 'Дундаж үнэлгээ',
+                value: avg,
+                format: (v) => v.toStringAsFixed(1),
+                icon: Icons.star_rounded,
+                colors: const [Color(0xFFFFB300), Color(0xFFFFD54F)]),
+          ]),
           const SizedBox(height: 12),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Барааны борлуулалт (ширхэг)',
-                      style: Theme.of(context).textTheme.titleMedium),
-                  const SizedBox(height: 8),
-                  SimpleBarChart(
-                      data: app.unitsByProduct(store.id),
-                      format: (v) => '$v ш'),
-                ],
-              ),
+          FadeSlideIn(
+            index: 4,
+            child: SectionCard(
+              title: 'Барааны борлуулалт (ширхэг)',
+              icon: Icons.bar_chart_rounded,
+              child: SimpleBarChart(
+                  data: app.unitsByProduct(store.id), format: (v) => '$v ш'),
             ),
           ),
         ],

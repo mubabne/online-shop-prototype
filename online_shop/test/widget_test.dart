@@ -7,6 +7,7 @@ import 'package:online_shop/models.dart';
 void main() {
   testWidgets('Login screen shows every role', (tester) async {
     await tester.pumpWidget(OnlineShopApp(state: AppState()));
+    await tester.pumpAndSettle();
     for (final role in UserRole.values) {
       expect(find.text(role.label), findsOneWidget);
     }
@@ -15,9 +16,11 @@ void main() {
   testWidgets('Guest can browse products', (tester) async {
     final state = AppState();
     await tester.pumpWidget(OnlineShopApp(state: state));
+    await tester.pumpAndSettle();
     await tester.tap(find.text(UserRole.guest.label));
     await tester.pumpAndSettle();
-    expect(find.text('Ухаалаг утас X12'), findsOneWidget);
+    // Хямдралын баннер болон жагсаалтад хоёуланд нь харагдана.
+    expect(find.text('Ухаалаг утас X12'), findsWidgets);
     // Баталгаажаагүй дэлгүүрийн бараа харагдахгүй.
     expect(find.text('Монголын нууц товчоо'), findsNothing);
   });

@@ -7,6 +7,7 @@ import 'screens/buyer_screens.dart';
 import 'screens/courier_screens.dart';
 import 'screens/login_screen.dart';
 import 'screens/merchant_screens.dart';
+import 'theme.dart';
 
 void main() {
   runApp(OnlineShopApp(state: AppState()));
@@ -24,10 +25,9 @@ class OnlineShopApp extends StatelessWidget {
       child: MaterialApp(
         title: 'Онлайн дэлгүүр',
         debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF1E88E5)),
-          useMaterial3: true,
-        ),
+        theme: buildTheme(Brightness.light),
+        darkTheme: buildTheme(Brightness.dark),
+        themeMode: ThemeMode.system,
         home: const RoleRouter(),
       ),
     );
@@ -41,14 +41,32 @@ class RoleRouter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final app = AppScope.of(context);
-    if (app.isGuest) return const BuyerHome(key: ValueKey('guest'));
     final user = app.currentUser;
-    if (user == null) return const LoginScreen();
-    return switch (user.role) {
-      UserRole.buyer || UserRole.guest => BuyerHome(key: ValueKey(user.id)),
-      UserRole.merchant => MerchantHome(key: ValueKey(user.id)),
-      UserRole.admin => const AdminHome(),
-      UserRole.courier => CourierHome(key: ValueKey(user.id)),
-    };
+    final Widget page;
+    if (app.isGuest) {
+      page = const BuyerHome(key: ValueKey('guest'));
+    } else if (user == null) {
+      page = const LoginScreen(key: ValueKey('login'));
+    } else {
+      page = switch (user.role) {
+        UserRole.buyer || UserRole.guest => BuyerHome(key: ValueKey(user.id)),
+        UserRole.merchant => MerchantHome(key: ValueKey(user.id)),
+        UserRole.admin => const AdminHome(key: ValueKey('admin')),
+        UserRole.courier => CourierHome(key: ValueKey(user.id)),
+      };
+    }
+    // Нэвтрэх / гарах үед зөөлөн шилжилт.
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 450),
+      switchInCurve: Curves.easeOutCubic,
+      transitionBuilder: (child, anim) => FadeTransition(
+        opacity: anim,
+        child: ScaleTransition(
+          scale: Tween(begin: 0.97, end: 1.0).animate(anim),
+          child: child,
+        ),
+      ),
+      child: page,
+    );
   }
 }
